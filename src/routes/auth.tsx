@@ -1,6 +1,12 @@
-import { cache, redirect } from "@solidjs/router";
+import { RouteDefinition, cache, redirect } from "@solidjs/router";
 import { getCurrentUser } from "aws-amplify/auth";
-import { type JSX, createEffect } from "solid-js";
+import { type JSX } from "solid-js";
+
+export const route = {
+  load() {
+    currentUserCache();
+  },
+} satisfies RouteDefinition;
 
 const currentUserCache = cache(async () => {
   try {
@@ -12,7 +18,5 @@ const currentUserCache = cache(async () => {
 }, "user");
 
 export default function AuthLayout(props: { children: JSX.Element }) {
-  createEffect(() => console.log(`user`, currentUserCache()));
-
   return <>{props.children}</>;
 }

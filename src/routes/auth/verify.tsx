@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 import { confirmSignUp } from "aws-amplify/auth";
-import { action, redirect, useSearchParams } from "@solidjs/router";
+import { action, redirect, useAction, useSearchParams } from "@solidjs/router";
 
 const verifyAction = action(async (data: { email?: string; otp: string }) => {
   if (!data.email) throw redirect("/sign-up");
@@ -21,12 +21,14 @@ export default function VerifyPage() {
   const [params] = useSearchParams<{ email: string }>();
   const [otp, setOtp] = createSignal("");
 
+  const verifyFn = useAction(verifyAction);
+
   return (
     <div class="flex justify-center items-center h-screen">
       <form
         onSubmit={async (e) => {
           e.preventDefault();
-          await verifyAction({ otp: otp(), email: params.email });
+          await verifyFn({ otp: otp(), email: params.email });
         }}
         class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 w-full max-w-md"
       >

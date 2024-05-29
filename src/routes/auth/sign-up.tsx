@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 import { signUp } from "aws-amplify/auth";
-import { action, redirect } from "@solidjs/router";
+import { action, redirect, useAction } from "@solidjs/router";
 
 const signUpAction = action(
   async (data: { email: string; password: string }) => {
@@ -26,9 +26,11 @@ export default function SignUpPage() {
   const [password, setPassword] = createSignal("");
   const [email, setEmail] = createSignal("");
 
+  const signUpFn = useAction(signUpAction);
+
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    await signUpAction({ email: email(), password: password() });
+    await signUpFn({ email: email(), password: password() });
   };
 
   return (

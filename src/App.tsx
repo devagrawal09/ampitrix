@@ -7,9 +7,9 @@ export default function App() {
   return (
     <Router
       root={(props) => (
-        <>
+        <main class="w-11/12 m-auto py-10 text-center">
           <Suspense>{props.children}</Suspense>
-        </>
+        </main>
       )}
     >
       <FileRoutes />

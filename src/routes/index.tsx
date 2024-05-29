@@ -1,62 +1,101 @@
-import { Show, Suspense, createEffect, createSignal } from "solid-js";
-import type { Schema } from "../../amplify/data/resource";
-import { generateClient } from "aws-amplify/data";
-import { RouteDefinition, cache, createAsync, redirect } from "@solidjs/router";
+import { For, Show } from "solid-js";
+import {
+  RouteDefinition,
+  action,
+  cache,
+  createAsync,
+  redirect,
+  useAction,
+} from "@solidjs/router";
 import { getCurrentUser } from "aws-amplify/auth";
-
-const client = generateClient<Schema>();
+import { ampClient } from "../amplify-client";
 
 export const route = {
   load() {
     currentUserCache();
+    roomsCache();
   },
 } satisfies RouteDefinition;
 
 const currentUserCache = cache(async () => {
   try {
     const user = await getCurrentUser();
+
+    console.log(`currentUserCache`, { user });
+
     return user;
   } catch (err) {
     throw redirect("/auth/sign-in");
   }
 }, "currentUser");
 
-export default function TodosPage() {
-  const [todos, setTodos] = createSignal<Array<Schema["Todo"]["type"]>>([]);
+const roomsCache = cache(async () => {
+  const { data, errors } = await ampClient.models.Room.list({});
+
+  console.log(`roomsCache`, { data, errors });
+
+  return data;
+}, "rooms");
+
+const createRoomAction = action(async (name: string) => {
+  const { data, errors } = await ampClient.models.Room.create({
+    name,
+    players: [],
+  });
+
+  console.log(`createRoomAction`, { data, errors });
+
+  if (data) {
+    throw redirect(`/room/${data.id}/lobby`);
+  }
+});
+
+export default function RoomCatalogPage() {
+  const rooms = createAsync(() => roomsCache());
   const currentUser = createAsync(() => currentUserCache());
 
-  function createTodo() {
-    client.models.Todo.create({ content: window.prompt("Todo content") });
-  }
+  const createTodo = useAction(createRoomAction);
 
-  function deleteTodo(id: string) {
-    client.models.Todo.delete({ id });
-  }
-  createEffect(() => {
-    client.models.Todo.observeQuery().subscribe({
-      next: (data) => setTodos([...data.items]),
-    });
-  });
   return (
-    <Suspense fallback={<>Loading User</>}>
-      <Show when={currentUser()}>
-        <main>
-          <h1>Username</h1>
-          <button onClick={createTodo}>+ new</button>
-          <ul>
-            {todos().map((todo) => (
-              <li onClick={() => deleteTodo(todo.id)}>{todo.content}</li>
-            ))}
-          </ul>
-          <div>
-            🥳 App successfully hosted. Try creating a new todo.
-            <br />
-            <a href="https://docs.amplify.aws/react/start/quickstart/#make-frontend-updates">
-              Review next step of this tutorial.
-            </a>
-          </div>
-        </main>
-      </Show>
-    </Suspense>
+    <Show when={currentUser()}>
+      <h1 class="text-3xl py-8">Welcome to Tournitrix</h1>
+      <ul class="nes-container with-title ">
+        <h2 class="title">Rooms</h2>
+        <div class="grid gap-4 grid-cols-2">
+          <For each={rooms()}>
+            {(room) => (
+              <li class="nes-container with-title">
+                <div class="title">{room.name}</div>
+                <a
+                  href={`/room/${room.id}/lobby`}
+                  class="nes-btn is-primary w-full"
+                >
+                  Join
+                </a>
+              </li>
+            )}
+          </For>
+        </div>
+      </ul>
+
+      {/* a small form with a name field to create a new room */}
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const form = e.currentTarget;
+          // @ts-expect-error html events suck
+          const name = form.name.value;
+
+          await createTodo(name);
+          form.reset();
+        }}
+        class="flex gap-2"
+      >
+        <input class="nes-input" type="text" name="name" />
+        <button class="nes-btn is-success" type="submit">
+          Create Room
+        </button>
+      </form>
+    </Show>
   );
 }
